@@ -1,6 +1,6 @@
 {
   "name": "@ksoftm/create-arc",
-  "version": "1.0.0",
+  "version": "1.0.2",
   "private": false,
   "description": "Scaffold and manage ARC — plan-driven development for AI agents (Align → Refine → Construct). Pure-Markdown plans, tasks, worklogs and statuses in .arc/, for any language and any agent.",
   "keywords": [
