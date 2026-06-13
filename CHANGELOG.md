@@ -3,6 +3,12 @@
 All notable changes to this project are documented here. This file is
 automatically maintained by semantic-release from Conventional Commits.
 
+## [1.0.1](https://github.com/KsoftmHub/arc-framework-v1/compare/v1.0.0...v1.0.1) (2026-06-13)
+
+### Bug Fixes
+
+* pipeline version updated ([dde879f](https://github.com/KsoftmHub/arc-framework-v1/commit/dde879f91d9b3386d97e1fd5b5e1966a227af251))
+
 ## 1.0.0 (2026-06-13)
 
 ### Features
