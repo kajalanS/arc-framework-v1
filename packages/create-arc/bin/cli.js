@@ -790,11 +790,23 @@ Focus: $ARGUMENTS`,
   },
   "arc-status": {
     desc: "ARC: summarize all arcs and what to resume",
-    body: `Run \`npx @ksoftm/create-arc status\` (or read .arc/INDEX.md and each arc). Report every arc's id, status, plan version, task progress, and which in-progress/refining arcs to resume — reading each one's Status Notes and last Worklog entry.`,
+    body: `Run \`arc status\` (or read .arc/INDEX.md). Report every arc's id, status, plan version, and task progress, and call out which in-progress/refining arcs to resume. For any arc that needs detail, run \`arc show <arc>\` for its plan/tasks/status and \`arc log <arc>\` for its worklog history. Then run \`arc next\` to recommend what to pick up.`,
   },
   "arc-resume": {
     desc: "ARC: pick up the in-progress arc cold",
-    body: `Read ./ARC.md. Read .arc/INDEX.md, find arcs in in-progress or refining, open them, read Status Notes and the last Worklog entry, then continue from the open tasks — after running Read Before Editing. If code and the arc disagree, the code is truth: note the drift in the Worklog and correct the arc.`,
+    body: `Read ./ARC.md. Run \`arc next\` to find what to work on, then \`arc show <arc>\` and \`arc log <arc>\` to read its plan, status notes, and last worklog entries. Continue from the open tasks — after running Read Before Editing. If code and the arc disagree, the code is truth: \`arc note <arc> "drift: …" --worklog\` to record it, then correct the arc.`,
+  },
+  "arc-note": {
+    desc: "ARC: quick-capture an instruction or worklog note onto an arc",
+    body: `Capture this onto the relevant arc without rewriting the plan:
+
+"$ARGUMENTS"
+
+If it's a new requirement or instruction, run \`arc note <arc> "$ARGUMENTS"\` (it lands verbatim in §1 Raw Instructions). If it's a progress/decision note about work just done, run \`arc note <arc> "$ARGUMENTS" --worklog\` instead. Use \`arc status\` first if you're unsure which arc this belongs to. If it actually changes the plan or scope, use /arc-refine instead of /arc-note.`,
+  },
+  "arc-log": {
+    desc: "ARC: show an arc's worklog history",
+    body: `Run \`arc log <arc>\` for the arc referenced by "$ARGUMENTS" (resolve it via \`arc status\` if only a topic is given) and summarize its worklog timeline: what was done, in what order, and any decisions or follow-ups recorded. Then state where the arc currently stands and what the next step is.`,
   },
 };
 
@@ -837,7 +849,7 @@ function cmdAgentInit(flags) {
     console.log(`  ${agent.padEnd(9)} ${rel}/  (${Object.keys(ARC_COMMANDS).length} commands)`);
   }
   console.log(`\nAgent commands written (created ${created}, skipped ${skipped}${flags.force ? "" : "; use --force to overwrite"}).`);
-  console.log(`Type /arc-new, /arc-build, /arc-status, /arc-refine, /arc-resume in your agent.`);
+  console.log(`Commands: /arc-new /arc-build /arc-refine /arc-note /arc-log /arc-status /arc-resume`);
   return 0;
 }
 
