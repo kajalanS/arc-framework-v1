@@ -295,6 +295,71 @@ test("per-command help prints for a topic and via --help", () => {
   } finally { rmSync(dir, { recursive: true, force: true }); }
 });
 
+test("refine appends an instruction, bumps the plan version, and logs it", () => {
+  const dir = fresh();
+  try {
+    run(dir, ["init"]);
+    run(dir, ["new", "search feature"]);
+    run(dir, ["refine", "1", "also support fuzzy matching", "--changed", "added fuzzy to scope"]);
+    const arc = readFileSync(join(dir, ".arc/ARC-0001-search-feature.md"), "utf8");
+    assert.match(arc, /^status: refining/m);
+    assert.match(arc, /^plan_version: 2/m);
+    assert.match(arc, /### I2 — \d{4}-\d{2}-\d{2}/);          // instruction appended to §1
+    assert.match(arc, /> also support fuzzy matching/);
+    assert.match(arc, /### v2 — \d{4}-\d{2}-\d{2} — triggered by I2/); // §3 entry
+    assert.match(arc, /changed: added fuzzy to scope/);
+    assert.match(readFileSync(join(dir, ".arc/INDEX.md"), "utf8"), /\| ARC-0001 \| search feature \| refining \| 2 \|/);
+  } finally { rmSync(dir, { recursive: true, force: true }); }
+});
+
+test("note appends to Raw Instructions, and --worklog appends to the Worklog", () => {
+  const dir = fresh();
+  try {
+    run(dir, ["init"]);
+    run(dir, ["new", "noted"]);
+    run(dir, ["note", "1", "handle unicode input"]);
+    run(dir, ["note", "1", "spiked a library, too heavy", "--worklog"]);
+    const arc = readFileSync(join(dir, ".arc/ARC-0001-noted.md"), "utf8");
+    assert.match(arc, /> handle unicode input/);                 // in §1
+    assert.match(arc, /spiked a library, too heavy/);            // in §5
+    const wl = arc.split("## 5 · Worklog")[1];
+    assert.match(wl, /spiked a library/);
+  } finally { rmSync(dir, { recursive: true, force: true }); }
+});
+
+test("log lists worklog entries and supports --json", () => {
+  const dir = fresh();
+  try {
+    run(dir, ["init"]);
+    run(dir, ["new", "logged"]);
+    run(dir, ["start", "1"]);
+    run(dir, ["note", "1", "a progress note", "--worklog"]);
+    const txt = run(dir, ["log", "1"]);
+    assert.match(txt, /worklog \(\d+ entr/);
+    assert.match(txt, /a progress note/);
+    const j = JSON.parse(run(dir, ["log", "1", "--json"]));
+    assert.equal(j.id, "ARC-0001");
+    assert.ok(Array.isArray(j.worklog) && j.worklog.length >= 1);
+  } finally { rmSync(dir, { recursive: true, force: true }); }
+});
+
+test("show --json and next --json emit structured data", () => {
+  const dir = fresh();
+  try {
+    run(dir, ["init"]);
+    run(dir, ["new", "structured", "--goal", "a goal", "--task", "t one"]);
+    const s = JSON.parse(run(dir, ["show", "1", "--json"]));
+    assert.equal(s.id, "ARC-0001");
+    assert.match(s.plan, /a goal/);
+    assert.match(s.tasks, /t one/);
+    run(dir, ["start", "1"]);
+    const n = JSON.parse(run(dir, ["next", "--json"]));
+    assert.equal(n.next.id, "ARC-0001");
+    assert.equal(n.next.status, "in-progress");
+    assert.ok(Array.isArray(n.blocked));
+  } finally { rmSync(dir, { recursive: true, force: true }); }
+});
+
 test("version prints the package version", () => {
   const out = run(process.cwd(), ["--version"]).trim();
   assert.match(out, /^\d+\.\d+\.\d+$/);

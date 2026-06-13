@@ -170,11 +170,12 @@ Stuck? `arc block <arc> --reason "waiting on redis"` records the blocker.
 
 New requirement mid-flight? Don't start a new arc — refine the existing one:
 
-```
-/arc-refine actually make the limit configurable per plan tier
+```bash
+arc refine <arc> "make the limit configurable per plan tier" --changed "limit is now per-tier"
+arc note <arc> "remember to document the new env var"   # quick capture, no version bump
 ```
 
-The new instruction is appended verbatim, the plan bumps a version (with a logged reason), and the tasks adjust. Nothing is silently rewritten.
+`refine` appends your instruction verbatim, bumps the plan version (with a logged reason), sets the arc to `refining`, and adds a §3 Refinement Log entry. `note` is the lighter touch — it just records a thought into Raw Instructions (or the Worklog with `--worklog`) without changing the plan. Agent equivalent: `/arc-refine make the limit configurable per plan tier`. Nothing is silently rewritten.
 
 ### 4. Check in / resume → **Status**
 
@@ -254,11 +255,14 @@ arc init [dir] [--owner=NAME]
 arc new "Title" [--goal "…"] [--task "…"]… [--tags=a,b] [--owner=NAME] [--dir=.]
 arc start <arc>
 arc task <arc> <n> [done|start|block|cancel|pending]   |   arc task <arc> --add "text"
+arc refine <arc> "instruction" [--changed "…"] [--source chat|voice|issue|review]
+arc note <arc> "text" [--worklog]
 arc block <arc> [--reason "…"]
 arc done <arc>
 arc archive <arc> [--cancelled] [--reason "…"]
-arc show <arc>
-arc next
+arc show <arc> [--json]
+arc log <arc> [--json]
+arc next [--json]
 arc status [dir] [--json]
 arc doctor [dir] [--fix]
 arc agent-init [--agents=a,b] [--force]
@@ -273,16 +277,19 @@ arc help [command]      arc --version
 | `new "Title"` | Take the next ID, create the arc, register its `INDEX.md` row, bump `next_id`. `--goal`/`--task` prefill the plan and tasks. |
 | `start <arc>` | Set the arc to `in-progress` and log it. |
 | `task <arc> <n> [action]` | Toggle task T`<n>` — `done` (default), `start`, `block`, `cancel`, `pending`. `--add "text"` appends a new task. |
+| `refine <arc> "…"` | Fold a new instruction into the arc: append it verbatim to §1, bump `plan_version`, add a §3 Refinement Log entry, set status `refining`. `--changed` records the plan delta. |
+| `note <arc> "…"` | Quick-append a note — to §1 Raw Instructions by default, or §5 Worklog with `--worklog`. |
 | `block <arc>` | Set the arc to `blocked`; `--reason` is recorded in the worklog. |
 | `done <arc>` | Mark `done`, log it, move the file to `.arc/archive/`, and move its row to the Archived table. |
 | `archive <arc>` | Archive the arc. Default outcome `done`; `--cancelled` archives as cancelled. |
-| `show <arc>` | Print one arc's plan, tasks, and status notes. |
-| `next` | Suggest what to work on (active focus → in-progress → planned), skipping the standing maintenance arc. |
+| `show <arc>` | Print one arc's plan, tasks, and status notes. `--json` for structured output. |
+| `log <arc>` | Show the arc's worklog timeline. `--json` for structured output. |
+| `next` | Suggest what to work on (active focus → in-progress → planned), skipping the standing maintenance arc. `--json` supported. |
 | `status [dir]` | Table (or `--json`) of every arc: ID, status, plan version, task progress, what to resume. |
 | `doctor [dir]` | Consistency checks — index ↔ file bijection, id/`next_id` sanity, valid statuses. Exits non-zero on problems. `--fix` auto-repairs id mismatches, index status drift, and the `next_id` counter. |
 | `agent-init` | Generate `/arc-*` slash commands for AI agents. `--agents claude,opencode` picks specific ones; `--force` overwrites. |
 
-Common options: `--owner NAME` (defaults to `git config user.name`), `--goal "…"`, `--task "…"` (repeatable), `--tags a,b`, `--reason "…"`, `--cancelled`, `--fix`, `--dir`, `--json`, `--agents a,b`, `--force`, `--version`, `--help`. Per-command help: `arc help <command>` or `arc <command> --help`.
+Common options: `--owner NAME` (defaults to `git config user.name`), `--goal "…"`, `--task "…"` (repeatable), `--changed "…"`, `--source …`, `--worklog`, `--tags a,b`, `--reason "…"`, `--cancelled`, `--fix`, `--json`, `--dir`, `--agents a,b`, `--force`, `--version`, `--help`. Per-command help: `arc help <command>` or `arc <command> --help`.
 
 ---
 

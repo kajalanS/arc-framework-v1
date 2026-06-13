@@ -36,10 +36,13 @@ Requires Node ≥ 18.
 | `start <arc>` | Set an arc to in-progress and log it. `<arc>` is an id or slug. |
 | `task <arc> <n> [done\|start\|block\|cancel\|pending]` | Toggle a task marker; `--add "text"` appends a new task. |
 | `block <arc> [--reason …]` | Set an arc to blocked, recording the reason in the worklog. |
+| `refine <arc> "…"` | Fold a new instruction into an arc: append to §1, bump plan_version, log §3, set refining. |
+| `note <arc> "…"` | Quick-append to §1 Raw Instructions (or §5 Worklog with `--worklog`). |
+| `log <arc> [--json]` | Show the arc's worklog timeline. |
 | `done <arc>` | Mark done, log it, move the file to `archive/`, move its index row. |
 | `archive <arc> [--cancelled]` | Archive an arc (outcome done, or cancelled). |
-| `show <arc>` | Print one arc's plan, tasks, and status notes. |
-| `next` | Suggest what to work on next. |
+| `show <arc> [--json]` | Print one arc's plan, tasks, and status notes. |
+| `next [--json]` | Suggest what to work on next. |
 | `status [dir] [--json]` | Print a table (or JSON) of every arc: ID, status, plan version, task progress, and which to resume. |
 | `doctor [dir] [--fix]` | Consistency checks — index ↔ file bijection, ID/`next_id` sanity, valid statuses. Exits non-zero on problems (CI-friendly). `--fix` auto-repairs drift. |
 

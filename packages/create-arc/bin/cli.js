@@ -55,7 +55,7 @@ function detectOwner(dir) {
   return "user";
 }
 
-const BOOLEAN_FLAGS = new Set(["json", "help", "version", "fix", "force", "cancelled", "cancel"]);
+const BOOLEAN_FLAGS = new Set(["json", "help", "version", "fix", "force", "cancelled", "cancel", "worklog"]);
 const REPEATABLE_FLAGS = new Set(["task"]);
 
 function parseArgv(argv) {
@@ -210,6 +210,60 @@ function appendWorklog(arcPath, note) {
 // Get the current plan_version int from an arc.
 function planVersionOf(arcPath) {
   return parseInt(field(frontmatter(readText(arcPath)), "plan_version", "1"), 10) || 1;
+}
+
+// Count existing instructions (I1, I2, …) in §1 to compute the next index.
+function nextInstructionIndex(text) {
+  const nums = [...text.matchAll(/^### I(\d+)\b/gm)].map((m) => parseInt(m[1], 10));
+  return (nums.length ? Math.max(...nums) : 0) + 1;
+}
+
+// Append a verbatim instruction to "## 1 · Raw Instructions". Returns the new I-index.
+function appendInstruction(arcPath, instruction, source = "chat") {
+  let text = readText(arcPath);
+  const idx = nextInstructionIndex(text);
+  const quoted = String(instruction).trim().split("\n").map((l) => `> ${l}`).join("\n");
+  const entry = `\n### I${idx} — ${today()} (source: ${source})\n${quoted}\n`;
+  const sec = text.match(/(^## 1 · Raw Instructions\n)([\s\S]*?)(?=^## )/m);
+  if (!sec) { writeFileSync(arcPath, text + entry); return idx; }
+  // append at the end of §1, before the next "## "
+  const insertAt = sec.index + sec[1].length + sec[2].replace(/\n*$/, "\n").length;
+  const head = text.slice(0, sec.index + sec[1].length);
+  const bodyTrimmed = sec[2].replace(/\n+$/, "\n");
+  text = head + bodyTrimmed + entry + "\n" + text.slice(sec.index + sec[0].length);
+  writeFileSync(arcPath, text);
+  return idx;
+}
+
+// Append a Refinement Log entry under "## 3 · Refinement Log" for a version bump.
+function appendRefinement(arcPath, version, changed, instructionIdx) {
+  let text = readText(arcPath);
+  const trigger = instructionIdx ? ` — triggered by I${instructionIdx}` : "";
+  const entry = `\n### v${version} — ${today()}${trigger}\n- changed: ${changed}\n`;
+  const m = text.match(/^## 3 · Refinement Log\n/m);
+  if (!m) { writeFileSync(arcPath, text + entry); return; }
+  // insert right after the heading + its leading HTML comment (the example block)
+  let afterHead = m.index + m[0].length;
+  const rest = text.slice(afterHead);
+  const lead = rest.match(/^(\s*<!--[\s\S]*?-->\n)/);   // skip the template's example comment
+  if (lead) afterHead += lead[0].length;
+  text = text.slice(0, afterHead) + entry + text.slice(afterHead);
+  writeFileSync(arcPath, text);
+}
+
+// Extract worklog entries (### timestamp — note + bullet lines) from §5.
+function readWorklog(arcPath) {
+  const text = readText(arcPath);
+  const sec = text.match(/^## 5 · Worklog\n([\s\S]*?)(?=^## |\Z)/m)?.[1] ?? "";
+  const body = sec.replace(/<!--[\s\S]*?-->/g, "").trim();
+  if (!body) return [];
+  // split on entry headers, keep the header text
+  const parts = body.split(/(?=^### )/m).map((s) => s.trim()).filter(Boolean);
+  return parts.map((p) => {
+    const head = p.match(/^### (.+)/)?.[1] ?? "";
+    const lines = p.split("\n").slice(1).map((l) => l.trim()).filter(Boolean);
+    return { head, lines };
+  });
 }
 
 /* -------------------------------- commands ------------------------------- */
@@ -583,6 +637,61 @@ function cmdTask(ref, flags, rest) {
   return 0;
 }
 
+// arc refine <arc> "instruction" [--changed "…"] [--source chat|voice|issue|review]
+// Appends the instruction verbatim to §1, bumps plan_version, logs §3, sets refining.
+function cmdRefine(ref, flags, rest) {
+  const r = resolveForMutation(ref, flags);
+  if (r.err) return r.err;
+  if (r.archived) return fail(`${r.id} is archived — restore it before refining`);
+  const instruction = (rest || []).join(" ").trim() || (typeof flags.note === "string" ? flags.note : "");
+  if (!instruction) return fail('what changed? usage: arc refine <arc> "the new instruction" [--changed "plan delta"]');
+
+  const iIdx = appendInstruction(r.path, instruction, flags.source || "chat");
+  const nextVer = planVersionOf(r.path) + 1;
+  const changed = (typeof flags.changed === "string" && flags.changed) || instruction;
+  appendRefinement(r.path, nextVer, changed, iIdx);
+  updateArcFrontmatter(r.path, { plan_version: nextVer, status: "refining" });
+  syncIndexRow(r.arcDir, r.id, { status: "refining", planVersion: nextVer });
+  appendWorklog(r.path, `refined to plan v${nextVer} (I${iIdx})`);
+  console.log(`${r.id} → refining · plan v${nextVer} · recorded I${iIdx}`);
+  console.log(`Next: update §2 Plan to reflect v${nextVer}, then adjust Tasks.`);
+  return 0;
+}
+
+// arc note <arc> "text" [--worklog] — quick-append an instruction (default) or a worklog note.
+function cmdNote(ref, flags, rest) {
+  const r = resolveForMutation(ref, flags);
+  if (r.err) return r.err;
+  const note = (rest || []).join(" ").trim() || (typeof flags.note === "string" ? flags.note : "");
+  if (!note) return fail('usage: arc note <arc> "text" [--worklog]');
+  if (flags.worklog) {
+    appendWorklog(r.path, note);
+    updateArcFrontmatter(r.path, {});
+    console.log(`${r.id}: worklog note added`);
+  } else {
+    const iIdx = appendInstruction(r.path, note, flags.source || "chat");
+    updateArcFrontmatter(r.path, {});
+    console.log(`${r.id}: recorded I${iIdx} in Raw Instructions`);
+  }
+  return 0;
+}
+
+// arc log <arc> [--json] — show an arc's worklog timeline.
+function cmdLog(ref, flags) {
+  const r = resolveForMutation(ref, flags);
+  if (r.err) return r.err;
+  const entries = readWorklog(r.path);
+  const a = parseArc(r.path, r.archived);
+  if (flags.json) { console.log(JSON.stringify({ id: a.id, title: a.title, worklog: entries }, null, 2)); return 0; }
+  console.log(`${a.id} · ${a.title} — worklog (${entries.length} entr${entries.length === 1 ? "y" : "ies"})`);
+  if (!entries.length) { console.log("  (no worklog entries yet)"); return 0; }
+  for (const e of entries) {
+    console.log(`\n• ${e.head}`);
+    for (const l of e.lines) console.log(`    ${l}`);
+  }
+  return 0;
+}
+
 // arc show <ref> — print one arc's plan, tasks, and status notes.
 function cmdShow(ref, flags) {
   const r = resolveForMutation(ref, flags);
@@ -590,6 +699,16 @@ function cmdShow(ref, flags) {
   const text = readText(r.path);
   const a = parseArc(r.path, r.archived);
   const sec = (n, title) => text.match(new RegExp(`^## ${n} · ${title}\\n([\\s\\S]*?)(?=^## |\\Z)`, "m"))?.[1]?.trim() ?? "";
+  if (flags.json) {
+    const clean = (s) => s.replace(/<!--[\s\S]*?-->/g, "").trim();
+    console.log(JSON.stringify({
+      ...a,
+      plan: clean(sec(2, "Plan \\(current[^)]*\\)") || sec(2, "Plan.*")),
+      tasks: clean(sec(4, "Tasks")),
+      status_notes: clean(sec(6, "Status Notes")),
+    }, null, 2));
+    return 0;
+  }
   console.log(`${a.id} · ${a.title}`);
   console.log(`status: ${a.status}${r.archived ? " (archived)" : ""} · plan v${a.plan_version} · tasks ${a.tasks_total ? `${a.tasks_done}/${a.tasks_total}` : "—"} · updated ${a.updated}`);
   const plan = sec(2, "Plan \\(current[^)]*\\)") || sec(2, "Plan.*");
@@ -622,6 +741,15 @@ function cmdNext(flags) {
     byStatus("in-progress")[0] || byStatus("refining")[0] ||
     byStatus("planned")[0] || byStatus("review")[0] || byStatus("draft")[0];
 
+  if (flags.json) {
+    console.log(JSON.stringify({
+      next: pick ? { id: pick.id, title: pick.title, status: pick.status,
+                     tasks_done: pick.tasks_done, tasks_total: pick.tasks_total,
+                     tasks_blocked: pick.tasks_blocked } : null,
+      blocked: byStatus("blocked").map((a) => a.id),
+    }, null, 2));
+    return 0;
+  }
   if (!pick) { console.log("nothing actionable — all arcs are blocked or done"); return 0; }
   console.log(`next: ${pick.id} · ${pick.title}  [${pick.status}]`);
   console.log(`  tasks ${pick.tasks_total ? `${pick.tasks_done}/${pick.tasks_total}` : "—"}${pick.tasks_blocked ? ` · ${pick.tasks_blocked} blocked` : ""}`);
@@ -652,7 +780,7 @@ Steps: run \`arc status\` to see existing arcs; if an open arc already covers th
 
 "$ARGUMENTS"
 
-Append it verbatim as the next Raw Instruction, add a Refinement Log entry (new plan_version, what changed, task impact), rewrite the Plan to reflect only the current intent, and adjust the Tasks. Move dropped scope to "Out of scope". Never edit the append-only sections retroactively.`,
+Run \`arc refine <arc> "$ARGUMENTS" --changed "<one-line plan delta>"\` — this appends the instruction verbatim to §1, bumps plan_version, adds a §3 Refinement Log entry, and sets the arc to refining. Then rewrite §2 Plan to reflect only the current intent, adjust §4 Tasks (move dropped scope to "Out of scope"), and resume construction only once the plan and tasks absorb the change. Never edit the append-only sections retroactively.`,
   },
   "arc-build": {
     desc: "ARC: do the work for the active arc (Read Before / Update After Editing)",
@@ -730,6 +858,13 @@ const COMMAND_HELP = {
   Mark an arc done, log it, move the file to .arc/archive/, and move its INDEX row to Archived.`,
   block: `arc block <arc> [--reason "…"]
   Set an arc to blocked, recording the reason in the worklog.`,
+  refine: `arc refine <arc> "the new instruction" [--changed "plan delta"] [--source chat|voice|issue|review]
+  Fold a new instruction into an arc: append it verbatim to §1, bump plan_version,
+  add a §3 Refinement Log entry, and set status to refining.`,
+  note: `arc note <arc> "text" [--worklog] [--source …]
+  Quick-append a note. Default goes to §1 Raw Instructions; --worklog appends to §5 Worklog.`,
+  log: `arc log <arc> [--json]
+  Show an arc's worklog timeline (newest entries as recorded).`,
   archive: `arc archive <arc> [--cancelled] [--reason "…"]
   Archive an arc. Default outcome is "done"; --cancelled archives it as cancelled.`,
   task: `arc task <arc> <n> [done|start|block|cancel|pending]
@@ -763,14 +898,17 @@ Capture & plan
 Work the arc
   start <arc>                → in-progress
   task <arc> <n> [action]    tick a task ([done]/start/block/cancel/pending); --add "text"
+  refine <arc> "…"           fold in a new instruction (bumps plan version → refining)
+  note <arc> "…"             quick-append to Raw Instructions; --worklog for a worklog note
   block <arc> [--reason …]   → blocked
   done <arc>                 → done + archive (file + index row)
   archive <arc> [--cancelled]
 
 Inspect
   status [dir] [--json]      table of every arc
-  show <arc>                 one arc's plan, tasks, status
-  next                       what to work on next
+  show <arc> [--json]        one arc's plan, tasks, status
+  log <arc> [--json]         an arc's worklog timeline
+  next [--json]              what to work on next
   doctor [dir] [--fix]       consistency checks (+ auto-repair)
 
 <arc> is an id or slug: ARC-0007, 7, or a slug substring like "rate-limit".
@@ -800,6 +938,9 @@ else if (cmd === "start") code = cmdStart(pos[1], flags);
 else if (cmd === "done") code = cmdDone(pos[1], flags);
 else if (cmd === "block") code = cmdBlock(pos[1], flags);
 else if (cmd === "review") code = cmdReview(pos[1], flags);
+else if (cmd === "refine") code = cmdRefine(pos[1], flags, pos.slice(2));
+else if (cmd === "note") code = cmdNote(pos[1], flags, pos.slice(2));
+else if (cmd === "log") code = cmdLog(pos[1], flags);
 else if (cmd === "archive") code = cmdArchive(pos[1], flags);
 else if (cmd === "task") code = cmdTask(pos[1], flags, pos.slice(2));
 else if (cmd === "show" || cmd === "view") code = cmdShow(pos[1], flags);
