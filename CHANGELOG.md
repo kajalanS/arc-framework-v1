@@ -3,6 +3,12 @@
 All notable changes to this project are documented here. This file is
 automatically maintained by semantic-release from Conventional Commits.
 
+## [1.0.6](https://github.com/KsoftmHub/arc-framework-v1/compare/v1.0.5...v1.0.6) (2026-06-13)
+
+### Bug Fixes
+
+* **release:** decouple npm publish from critical release path ([f20c9d8](https://github.com/KsoftmHub/arc-framework-v1/commit/f20c9d8ff4ffea16047f57c1190402504bf2ce1c))
+
 ## [1.0.5](https://github.com/KsoftmHub/arc-framework-v1/compare/v1.0.4...v1.0.5) (2026-06-13)
 
 ### Bug Fixes
