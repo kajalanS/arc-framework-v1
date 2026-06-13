@@ -29,6 +29,7 @@ jobs:
         with:
           node-version: 22
           cache: npm
+          registry-url: https://registry.npmjs.org
 
       - name: Install workspace
         run: npm ci || npm install
@@ -51,9 +52,19 @@ jobs:
         working-directory: packages/create-arc
         run: npm test
 
-      # --- release (npm publish via NPM_TOKEN + GitHub Release) ---
+      # --- release (GitHub Release + skill artifact; npm publish is best-effort) ---
       - name: semantic-release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: npx semantic-release
+
+      # npm publish is non-blocking — the @ksoftm org must exist on npmjs.com
+      # for this scoped package to be published. Until the org is created, npm
+      # returns 404 and the step is skipped without failing the workflow.
+      - name: Publish to npm
+        working-directory: packages/create-arc
+        continue-on-error: true
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: npm publish --access public
