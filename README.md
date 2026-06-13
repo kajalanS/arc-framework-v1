@@ -264,3 +264,5 @@ Requirements: Node ≥ 18 and Python ≥ 3.8 (smoke test only; the shipped tooli
 ## License
 
 MIT — see [LICENSE](LICENSE). Concept credit: [DOX / agent0ai](https://github.com/agent0ai/dox).
+
+<!-- v1.0.0 -->
