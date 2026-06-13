@@ -38,4 +38,4 @@ All four must pass. CI additionally runs the CLI tests across Node 18/20/22 on L
 
 ## Releasing (maintainers)
 
-Bump the version in **both** `package.json` and `packages/create-arc/package.json` (keep them identical), commit, then push a matching `vX.Y.Z` tag. The release workflow verifies the tag matches the package version, publishes to npm with provenance, and creates a GitHub Release with the `.skill` asset. See the README's *Production deployment* section for the exact commands.
+Bump the version in **both** `package.json` and `packages/create-arc/package.json` (keep them identical), commit, and push to `master`. CI's `auto-tag` job detects the version change and pushes the matching `vX.Y.Z` tag, which triggers the release workflow (npm publish with provenance + GitHub Release with the `.skill` asset). No manual tagging needed for routine releases. See the README's *Production deployment* section for details and the one-time first-release note.

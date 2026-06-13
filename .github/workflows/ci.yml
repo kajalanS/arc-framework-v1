@@ -6,6 +6,7 @@ on:
   pull_request:
     branches: [master]
 
+# Default permissions stay read-only; the auto-tag job below opts into write.
 permissions:
   contents: read
 
@@ -78,3 +79,66 @@ jobs:
           name: arc-skill
           path: dist/*.skill
           if-no-files-found: error
+
+  # Auto-tag a release when packages/create-arc/package.json "version" changes on
+  # master. Pushing the tag triggers release.yml (npm publish + GitHub Release).
+  # Bump the version, commit, push to master — the tag is created for you.
+  auto-tag:
+    name: Auto-tag on version bump
+    runs-on: ubuntu-latest
+    needs: [validate, test-cli, package]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/master'
+    permissions:
+      contents: write      # needed to push the tag
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2     # need the previous commit to diff the version
+
+      - name: Determine version and whether it changed
+        id: ver
+        run: |
+          CURR="$(node -p "require('./packages/create-arc/package.json').version")"
+          echo "version=$CURR" >> "$GITHUB_OUTPUT"
+
+          # Previous commit's version (empty if the file/commit didn't exist).
+          PREV="$(git show HEAD~1:packages/create-arc/package.json 2>/dev/null \
+                  | node -e "let s='';process.stdin.on('data',d=>s+=d).on('end',()=>{try{console.log(JSON.parse(s).version)}catch{console.log('')}})" \
+                  || true)"
+          echo "previous=$PREV"
+          echo "current=$CURR"
+
+          if [ "$CURR" != "$PREV" ]; then
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Verify root and package versions match
+        if: steps.ver.outputs.changed == 'true'
+        run: |
+          ROOT="$(node -p "require('./package.json').version")"
+          PKG="${{ steps.ver.outputs.version }}"
+          if [ "$ROOT" != "$PKG" ]; then
+            echo "::error::root package.json version ($ROOT) != packages/create-arc version ($PKG). Keep them in lockstep before pushing."
+            exit 1
+          fi
+
+      - name: Create and push tag
+        if: steps.ver.outputs.changed == 'true'
+        env:
+          TAG: v${{ steps.ver.outputs.version }}
+        run: |
+          if git ls-remote --exit-code --tags origin "refs/tags/$TAG" >/dev/null 2>&1; then
+            echo "Tag $TAG already exists on origin — skipping (no release re-triggered)."
+            exit 0
+          fi
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git tag -a "$TAG" -m "Release $TAG"
+          git push origin "$TAG"
+          echo "Pushed $TAG — release.yml will now run."
+
+      - name: No version change
+        if: steps.ver.outputs.changed != 'true'
+        run: echo "version unchanged (${{ steps.ver.outputs.version }}) — no tag created."

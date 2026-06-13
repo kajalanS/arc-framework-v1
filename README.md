@@ -174,11 +174,12 @@ npm run sync:check    # verify everything is in sync (what CI runs)
 
 ## CI/CD
 
-[`.github/workflows/ci.yml`](.github/workflows/ci.yml) — on every push and PR to `main`:
+[`.github/workflows/ci.yml`](.github/workflows/ci.yml) — on every push and PR to `master`:
 
 - **validate** — template drift check, `SKILL.md` validation (mirrors the Skills API rules), and a Python smoke test exercising the three skill scripts end-to-end.
 - **test-cli** — the `create-arc` test suite across **Node 18 / 20 / 22** on **Linux, Windows, and macOS**.
 - **package** — builds `dist/arc.skill` and uploads it as a workflow artifact.
+- **auto-tag** — on `master`, if the package version changed since the previous commit, pushes a `vX.Y.Z` tag (which triggers the release workflow). Ordinary pushes with no version change do nothing.
 
 [`.github/workflows/release.yml`](.github/workflows/release.yml) — on a `v*.*.*` tag:
 
@@ -193,27 +194,28 @@ npm run sync:check    # verify everything is in sync (what CI runs)
 
 **One-time setup**
 
-1. Create the GitHub repo `KsoftM/arc` and push this tree to `main`. CI runs immediately.
+1. Create the GitHub repo and push this tree to `master`. CI runs immediately.
 2. Add a repository secret **`NPM_TOKEN`** — an npm **Automation** access token (npm → *Access Tokens* → *Generate New Token* → *Automation*). Required for publishing.
 3. Confirm the npm org/scope `@ksoftm` exists and your token can publish to it.
 
-**Cut a release** (this is the entire flow — one tag does everything):
+**How releases trigger (automatic)**
+
+Releases are driven by the version in `package.json`. The `auto-tag` job in [`ci.yml`](.github/workflows/ci.yml) runs after tests pass on `master`: if the `packages/create-arc` version changed since the previous commit, it creates and pushes the matching `vX.Y.Z` tag — and that tag triggers [`release.yml`](.github/workflows/release.yml) (npm publish with provenance + GitHub Release with the `.skill` asset).
+
+So a normal release is just a version bump:
 
 ```bash
-cd packages/create-arc && npm version patch && cd ../..   # 1.0.0 → 1.0.1 (also makes a commit + tag in the subdir)
-# bump the root version to match (keep them in lockstep):
-npm version 1.0.1 --no-git-tag-version
-
-git add -A && git commit -m "[ARC-0000] release v1.0.1"
-git tag v1.0.1
-git push && git push --tags
+cd packages/create-arc && npm version patch --no-git-tag-version && cd ../..  # 1.0.2 -> 1.0.3
+npm version 1.0.3 --no-git-tag-version                                        # keep root in lockstep
+git add -A && git commit -m "[ARC-0000] release v1.0.3"
+git push                                                                       # CI -> auto-tag -> release
 ```
 
-The pushed tag triggers `release.yml`, which validates, checks the tag/version match, publishes to npm with provenance, and drafts the GitHub Release with the `.skill` asset. Nothing publishes if any check fails.
+No manual `git tag` needed. The job skips tagging if the version is unchanged or the tag already exists, so ordinary pushes never publish.
 
-> **Tip:** keep the root `package.json` and `packages/create-arc/package.json` versions identical — the release workflow's tag-match guard checks the package version, and lockstep versions keep the GitHub Release and the npm release in agreement.
+> **First release on an existing repo:** if the current commit already carries the version you want to ship (e.g. you're already at `1.0.2`), there's nothing for `auto-tag` to diff against, so tag that one once by hand — `git tag v1.0.2 && git push origin v1.0.2` — then let `auto-tag` handle every bump afterward.
 
----
+> **Keep versions in lockstep:** the root `package.json` and `packages/create-arc/package.json` must match. The `auto-tag` job fails loudly if they diverge, and `release.yml` re-checks the tag against the package version before publishing.
 
 ## Local development
 

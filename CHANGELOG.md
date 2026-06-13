@@ -4,6 +4,23 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/), and the project adheres to
 [Semantic Versioning](https://semver.org/).
 
+## [1.0.3] - 2026-06-13
+
+### Fixed
+- **Release workflow never ran.** `release.yml` triggers only on a pushed
+  `v*.*.*` tag, and ordinary commits don't create tags — so pushing to the
+  default branch ran CI but never a release. CI also targeted `main` while the
+  repo's default branch is `master`, so even CI wasn't triggering on push.
+
+### Changed
+- `ci.yml` now targets the `master` branch (push + PR).
+- Added an `auto-tag` job to `ci.yml`: after tests pass on `master`, if the
+  `packages/create-arc` version changed since the previous commit, it creates
+  and pushes the matching `vX.Y.Z` tag — which triggers `release.yml`. Routine
+  releases are now just a version bump + push; no manual tagging. The job is a
+  no-op when the version is unchanged or the tag already exists, and it fails if
+  the root and package versions diverge.
+
 ## [1.0.2] - 2026-06-13
 
 ### Fixed
