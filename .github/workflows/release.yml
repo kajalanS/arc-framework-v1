@@ -42,7 +42,7 @@ jobs:
           python-version: "3.12"
 
       - name: Smoke-test skill scripts
-        run: python3 tools/smoke-test.py
+        run: npm run smoke
 
       - name: Test CLI
         working-directory: packages/create-arc

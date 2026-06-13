@@ -35,7 +35,7 @@ jobs:
           python-version: "3.12"
 
       - name: Smoke-test skill scripts
-        run: python3 tools/smoke-test.py
+        run: npm run smoke
 
   test-cli:
     name: Test create-arc CLI

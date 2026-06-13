@@ -1,6 +1,6 @@
 {
   "name": "arc-framework",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "private": true,
   "type": "module",
   "description": "ARC — plan-driven development for AI agents (Align → Refine → Construct), shipped as a Claude skill and an npm scaffolder.",
@@ -11,7 +11,7 @@
     "sync": "node tools/sync-templates.mjs",
     "sync:check": "node tools/sync-templates.mjs --check",
     "validate": "node tools/validate-skill.mjs",
-    "smoke": "python3 tools/smoke-test.py",
+    "smoke": "node tools/smoke.mjs",
     "package": "node tools/package-skill.mjs --out dist",
     "test": "npm test --workspace @ksoftm/create-arc",
     "check": "npm run sync:check && npm run validate && npm run smoke && npm test"

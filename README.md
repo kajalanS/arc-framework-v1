@@ -229,7 +229,7 @@ npm test                    # CLI test suite
 npm run package             # build dist/arc.skill (+ versioned alias)
 ```
 
-Requirements: Node ≥ 18 and Python ≥ 3.8 (smoke test only; the shipped tooling itself is dependency-free).
+Requirements: Node ≥ 18 and Python ≥ 3.8 (smoke test only; the shipped tooling itself is dependency-free). `npm run smoke` auto-detects the Python interpreter (`python` on Windows, `python3` elsewhere). Packaging uses Node's built-in zlib, so no `zip` binary is needed on any OS.
 
 ---
 
