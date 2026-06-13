@@ -3,6 +3,12 @@
 All notable changes to this project are documented here. This file is
 automatically maintained by semantic-release from Conventional Commits.
 
+## [1.0.5](https://github.com/KsoftmHub/arc-framework-v1/compare/v1.0.4...v1.0.5) (2026-06-13)
+
+### Bug Fixes
+
+* **release:** add explicit access:public to @semantic-release/npm plugin config ([51892ce](https://github.com/KsoftmHub/arc-framework-v1/commit/51892ce74de7ea412f0a429a9cb19d93efef95e0))
+
 ## [1.0.4](https://github.com/KsoftmHub/arc-framework-v1/compare/v1.0.3...v1.0.4) (2026-06-13)
 
 ### Bug Fixes
