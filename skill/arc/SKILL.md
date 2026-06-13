@@ -24,7 +24,7 @@ python3 scripts/arc_init.py /path/to/project --owner "name"
 
 This creates `ARC.md` (the protocol, at the project root) and `.arc/` with `INDEX.md`, `_TEMPLATE.md`, `ARC-0000-maintenance.md` (the standing lane for trivial fixes), `notes/`, and `archive/`, stamping today's date. `--owner` defaults to the project's `git config user.name`.
 
-Equivalent for users working outside this environment: `npx @ksoftm/create-arc init` (same templates, same result). If the user already gave development instructions, run Intake on them immediately after initializing.
+Equivalent for users working outside this environment: `npx @ksoftm/create-arc init` (same templates, same result). Users can also run `arc agent-init` to generate `/arc-*` slash commands for their coding agent. If the user already gave development instructions, run Intake on them immediately after initializing.
 
 ## Intake (Align)
 

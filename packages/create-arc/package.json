@@ -19,7 +19,8 @@
   "author": "Ksoftm (Kajalan)",
   "type": "module",
   "bin": {
-    "create-arc": "bin/cli.js"
+    "create-arc": "bin/cli.js",
+    "arc": "bin/cli.js"
   },
   "files": [
     "bin",

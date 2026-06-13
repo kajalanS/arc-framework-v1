@@ -166,12 +166,41 @@ function cmdNew(title, flags) {
   index = index.replace(/^next_id:\s*ARC-\d+\s*$/m, `next_id: ARC-${String(num + 1).padStart(4, "0")}`);
   const row = `| ${id} | ${title} | draft | 1 | ${date} | — | [${filename}](${filename}) |`;
   const lines = index.split("\n");
+  const archivedIdx = lines.findIndex((l) => /^##\s+Archived/i.test(l));
+  const scanEnd = archivedIdx === -1 ? lines.length : archivedIdx;
+
+  // Preferred: insert right after the last existing "| ARC-…" row in the Active section.
   let insertAt = -1;
-  for (let i = 0; i < lines.length; i++) {
-    if (lines[i].startsWith("## Archived")) break;
+  for (let i = 0; i < scanEnd; i++) {
     if (/^\|\s*ARC-/.test(lines[i])) insertAt = i;
   }
-  if (insertAt === -1) return fail("could not locate the Active table in INDEX.md");
+
+  if (insertAt === -1) {
+    // No arc rows yet (or a differently-shaped INDEX). Fall back, in order, to:
+    // the "## Active" heading's table separator, the heading itself, or next_id.
+    const activeIdx = lines.findIndex((l) => /^##\s+Active/i.test(l));
+    if (activeIdx !== -1) {
+      // find a markdown table separator (|---|) after the Active heading
+      let sep = -1;
+      for (let i = activeIdx + 1; i < scanEnd; i++) {
+        if (/^\|?\s*:?-{2,}/.test(lines[i]) || /^\|(\s*-+\s*\|)+/.test(lines[i])) { sep = i; break; }
+        if (/^\|\s*ID\s*\|/i.test(lines[i])) { sep = i + 1; }   // header row → insert after its separator
+      }
+      insertAt = sep !== -1 ? sep : activeIdx;   // after separator, else right after heading
+    } else {
+      // No Active section at all — synthesize one after next_id (or at top).
+      const nextIdIdx = lines.findIndex((l) => /^next_id:/.test(l));
+      const anchor = nextIdIdx !== -1 ? nextIdIdx : 0;
+      lines.splice(anchor + 1, 0,
+        "",
+        "## Active",
+        "",
+        "| ID | Title | Status | Plan v | Updated | Depends | File |",
+        "|---|---|---|---|---|---|---|");
+      insertAt = anchor + 5;   // the separator line we just added
+    }
+  }
+
   lines.splice(insertAt + 1, 0, row);
   writeFileSync(indexPath, lines.join("\n"));
 
@@ -297,15 +326,99 @@ function cmdDoctor(target) {
 
 function fail(msg) { console.error(`error: ${msg}`); return 1; }
 
+// Slash-commands generated for each supported agent. Each is a thin prompt that
+// routes the agent through ARC.md; $ARGUMENTS / $1 carry the user's text.
+const ARC_COMMANDS = {
+  "arc-new": {
+    desc: "ARC: capture a development instruction as a new arc (Align)",
+    body: `Read ./ARC.md, then run ARC Intake for this instruction:
+
+"$ARGUMENTS"
+
+Steps: read .arc/INDEX.md; if an open arc already covers this, append the instruction verbatim and refine its plan; otherwise create a new arc (use \`npx @ksoftm/create-arc new "<short title>"\`, or create the file from .arc/_TEMPLATE.md and register it in INDEX.md). Record the raw instruction verbatim, draft the Plan with checkable acceptance criteria, and list the Tasks. Do not start coding until the plan is acknowledged.`,
+  },
+  "arc-refine": {
+    desc: "ARC: fold a new instruction into an existing arc (Refine)",
+    body: `Read ./ARC.md, then refine the relevant arc with this instruction:
+
+"$ARGUMENTS"
+
+Append it verbatim as the next Raw Instruction, add a Refinement Log entry (new plan_version, what changed, task impact), rewrite the Plan to reflect only the current intent, and adjust the Tasks. Move dropped scope to "Out of scope". Never edit the append-only sections retroactively.`,
+  },
+  "arc-build": {
+    desc: "ARC: do the work for the active arc (Read Before / Update After Editing)",
+    body: `Read ./ARC.md. Before editing: read .arc/INDEX.md, fully read the arc(s) covering the files you'll touch, and read the real source files. Work the task list in order, marking one task in progress. After editing: advance task states, append a Worklog entry (tasks, files read, files changed, summary, decisions, follow-ups), update the arc frontmatter and its INDEX row, and reference the arc id in the commit. An edit without a worklog entry is unfinished.
+
+Focus: $ARGUMENTS`,
+  },
+  "arc-status": {
+    desc: "ARC: summarize all arcs and what to resume",
+    body: `Run \`npx @ksoftm/create-arc status\` (or read .arc/INDEX.md and each arc). Report every arc's id, status, plan version, task progress, and which in-progress/refining arcs to resume — reading each one's Status Notes and last Worklog entry.`,
+  },
+  "arc-resume": {
+    desc: "ARC: pick up the in-progress arc cold",
+    body: `Read ./ARC.md. Read .arc/INDEX.md, find arcs in in-progress or refining, open them, read Status Notes and the last Worklog entry, then continue from the open tasks — after running Read Before Editing. If code and the arc disagree, the code is truth: note the drift in the Worklog and correct the arc.`,
+  },
+};
+
+// Where each agent looks for project-level slash commands, and how to render one.
+const AGENT_TARGETS = {
+  claude:   { dir: ".claude/commands",  ext: ".md",  fmt: md },
+  opencode: { dir: ".opencode/command", ext: ".md",  fmt: md },
+  cursor:   { dir: ".cursor/commands",  ext: ".md",  fmt: md },
+  codex:    { dir: ".codex/prompts",    ext: ".md",  fmt: plain },   // Codex custom prompts
+  gemini:   { dir: ".gemini/commands",  ext: ".toml", fmt: toml },
+};
+const ALL_AGENTS = Object.keys(AGENT_TARGETS);
+
+function md(name, c)    { return `---\ndescription: ${c.desc}\n---\n\n${c.body}\n`; }
+function plain(name, c) { return `${c.body}\n`; }
+function toml(name, c)  {
+  const b = c.body.replace(/\\/g, "\\\\").replace(/"""/g, '\\"\\"\\"');
+  return `description = ${JSON.stringify(c.desc)}\nprompt = """\n${b}\n"""\n`;
+}
+
+function cmdAgentInit(flags) {
+  const dir = resolve(flags.dir ?? ".");
+  // --agents=claude,opencode  (default: all)
+  const agents = (flags.agents ? String(flags.agents).split(",") : ALL_AGENTS)
+    .map((a) => a.trim().toLowerCase()).filter(Boolean);
+  const unknown = agents.filter((a) => !AGENT_TARGETS[a]);
+  if (unknown.length) return fail(`unknown agent(s): ${unknown.join(", ")} (known: ${ALL_AGENTS.join(", ")})`);
+
+  let created = 0, skipped = 0;
+  for (const agent of agents) {
+    const { dir: rel, ext, fmt } = AGENT_TARGETS[agent];
+    const outDir = join(dir, rel);
+    mkdirSync(outDir, { recursive: true });
+    for (const [name, c] of Object.entries(ARC_COMMANDS)) {
+      const dest = join(outDir, name + ext);
+      if (existsSync(dest) && !flags.force) { skipped++; continue; }
+      writeFileSync(dest, fmt(name, c));
+      created++;
+    }
+    console.log(`  ${agent.padEnd(9)} ${rel}/  (${Object.keys(ARC_COMMANDS).length} commands)`);
+  }
+  console.log(`\nAgent commands written (created ${created}, skipped ${skipped}${flags.force ? "" : "; use --force to overwrite"}).`);
+  console.log(`Type /arc-new, /arc-build, /arc-status, /arc-refine, /arc-resume in your agent.`);
+  return 0;
+}
+
 function help() {
   console.log(`create-arc v${PKG.version} — ARC plan-driven development (Align → Refine → Construct)
+(alias: \`arc\`)
 
 Usage:
-  create-arc init [dir] [--owner=NAME]        scaffold ARC.md + .arc/ (idempotent)
-  create-arc new "Title" [--dir=.] [--tags=a,b] [--owner=NAME]
-                                              create + register the next arc
-  create-arc status [dir] [--json]            status table across all arcs
-  create-arc doctor [dir]                     consistency checks (exit 1 on problems)
+  arc init [dir] [--owner=NAME]            scaffold ARC.md + .arc/ (idempotent)
+  arc new "Title" [--dir=.] [--tags=a,b]   create + register the next arc
+  arc status [dir] [--json]                status table across all arcs
+  arc doctor [dir]                         consistency checks (exit 1 on problems)
+  arc agent-init [--agents=a,b] [--force]  write /slash commands for AI agents
+                                           (agents: ${ALL_AGENTS.join(", ")}; default: all)
+
+Run with npx (no install): npx @ksoftm/create-arc <command>
+Install globally:          npm i -g @ksoftm/create-arc   then: arc <command>
+Project dev dependency:    npm i -D @ksoftm/create-arc   then: npx arc <command>
 
 Protocol reference: ARC.md in your project root after init.`);
   return 0;
@@ -321,6 +434,7 @@ else if (cmd === "init") code = cmdInit(pos[1], flags);
 else if (cmd === "new") code = cmdNew(pos.slice(1).join(" "), flags);
 else if (cmd === "status") code = cmdStatus(pos[1], flags);
 else if (cmd === "doctor") code = cmdDoctor(pos[1]);
-else code = fail(`unknown command '${cmd}' — try: create-arc help`);
+else if (cmd === "agent-init" || cmd === "agents") code = cmdAgentInit(flags);
+else code = fail(`unknown command '${cmd}' — try: arc help`);
 
 process.exit(code);

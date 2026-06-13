@@ -3,11 +3,15 @@
 Scaffold and drive the **ARC framework** (Align → Refine → Construct) — plan-driven development for AI agents, in pure Markdown. Zero dependencies, any language, any agent.
 
 ```bash
-npx @ksoftm/create-arc init                          # scaffold ARC into the current project
-npx @ksoftm/create-arc new "Add per-key rate limit"  # open and register a new unit of work
-npx @ksoftm/create-arc status                         # every arc at a glance
-npx @ksoftm/create-arc doctor                         # verify the registry is consistent
+npm i -g @ksoftm/create-arc          # install once, then use the short `arc` command
+arc init                             # scaffold ARC into the current project
+arc new "Add per-key rate limit"     # open and register a new unit of work
+arc status                           # every arc at a glance
+arc doctor                           # verify the registry is consistent
+arc agent-init                       # write /arc-* slash commands for your AI agent
 ```
+
+No install? Use `npx @ksoftm/create-arc <command>`. Prefer pinning per-project? `npm i -D @ksoftm/create-arc` then `npx arc <command>`.
 
 ## What ARC is
 
@@ -32,7 +36,9 @@ Requires Node ≥ 18.
 | `status [dir] [--json]` | Print a table (or JSON) of every arc: ID, status, plan version, task progress, and which to resume. |
 | `doctor [dir]` | Consistency checks — index ↔ file bijection, ID/`next_id` sanity, valid statuses. Exits non-zero on problems (CI-friendly). |
 
-Common options: `--owner NAME` (defaults to `git config user.name`); `--tags a,b` on `new`; `--json` on `status`; `--version`, `--help`.
+Common options: `--owner NAME` (defaults to `git config user.name`); `--tags a,b` on `new`; `--json` on `status`; `--agents a,b` and `--force` on `agent-init`; `--version`, `--help`.
+
+Installs two equivalent binaries: **`arc`** and **`create-arc`**.
 
 ## What `init` produces
 

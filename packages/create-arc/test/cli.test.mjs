@@ -116,6 +116,61 @@ test("handles CRLF line endings in templates (Windows checkout)", () => {
   } finally { rmSync(dir, { recursive: true, force: true }); }
 });
 
+test("new works even when INDEX.md has no arc rows yet (robust insertion)", () => {
+  const dir = fresh();
+  try {
+    run(dir, ["init"]);
+    // Simulate an older/hand-edited INDEX with the Active table header but no ARC rows.
+    const indexPath = join(dir, ".arc/INDEX.md");
+    writeFileSync(indexPath,
+      "# ARC Index\n\nnext_id: ARC-0002\n\n## Active\n\n" +
+      "| ID | Title | Status | Plan v | Updated | Depends | File |\n" +
+      "|---|---|---|---|---|---|---|\n\n## Archived\n");
+    run(dir, ["new", "recover"]);   // previously failed: "could not locate the Active table"
+    assert.ok(existsSync(join(dir, ".arc/ARC-0002-recover.md")));
+    assert.match(readFileSync(indexPath, "utf8"), /\| ARC-0002 \| recover \|/);
+  } finally { rmSync(dir, { recursive: true, force: true }); }
+});
+
+test("new rebuilds a missing Active section instead of failing", () => {
+  const dir = fresh();
+  try {
+    run(dir, ["init"]);
+    const indexPath = join(dir, ".arc/INDEX.md");
+    writeFileSync(indexPath, "# ARC Index\n\nnext_id: ARC-0007\n");   // no Active section at all
+    run(dir, ["new", "synthesize table"]);
+    const idx = readFileSync(indexPath, "utf8");
+    assert.match(idx, /## Active/);
+    assert.match(idx, /\| ARC-0007 \| synthesize table \|/);
+  } finally { rmSync(dir, { recursive: true, force: true }); }
+});
+
+test("agent-init writes slash commands for all agents", () => {
+  const dir = fresh();
+  try {
+    run(dir, ["init"]);
+    run(dir, ["agent-init"]);
+    for (const f of [".claude/commands/arc-new.md", ".opencode/command/arc-build.md",
+                     ".cursor/commands/arc-status.md", ".codex/prompts/arc-resume.md",
+                     ".gemini/commands/arc-refine.toml"]) {
+      assert.ok(existsSync(join(dir, f)), `${f} should exist`);
+    }
+    assert.match(readFileSync(join(dir, ".claude/commands/arc-new.md"), "utf8"), /description:/);
+    assert.match(readFileSync(join(dir, ".gemini/commands/arc-new.toml"), "utf8"), /^description = /m);
+  } finally { rmSync(dir, { recursive: true, force: true }); }
+});
+
+test("agent-init --agents filters to selected agents", () => {
+  const dir = fresh();
+  try {
+    run(dir, ["init"]);
+    run(dir, ["agent-init", "--agents", "claude,opencode"]);
+    assert.ok(existsSync(join(dir, ".claude/commands/arc-new.md")));
+    assert.ok(existsSync(join(dir, ".opencode/command/arc-new.md")));
+    assert.ok(!existsSync(join(dir, ".gemini")), "unselected agents should not be created");
+  } finally { rmSync(dir, { recursive: true, force: true }); }
+});
+
 test("version prints the package version", () => {
   const out = run(process.cwd(), ["--version"]).trim();
   assert.match(out, /^\d+\.\d+\.\d+$/);

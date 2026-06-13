@@ -65,18 +65,39 @@ From then on, just give development instructions. Claude detects any repo contai
 
 ### As a CLI
 
-In any project, with Node ≥ 18:
+Install once globally and use the short `arc` command anywhere:
 
 ```bash
-npx @ksoftm/create-arc init                          # scaffold ARC.md + .arc/
-npx @ksoftm/create-arc new "Add per-key rate limit" --tags api,infra
-npx @ksoftm/create-arc status                         # every arc at a glance
-npx @ksoftm/create-arc doctor                         # verify the registry is consistent
+npm i -g @ksoftm/create-arc       # global install
+arc init                          # scaffold ARC.md + .arc/ in the current project
+arc new "Add per-key rate limit"  # capture an instruction as a new arc
+arc status                        # every arc at a glance
+arc doctor                        # verify the registry is consistent
 ```
 
-Then point your agent at `ARC.md` (or add the pointer below to your `AGENTS.md` / `CLAUDE.md`):
+Or run it with no install via `npx`:
 
-```markdown
+```bash
+npx @ksoftm/create-arc init
+npx @ksoftm/create-arc new "Add per-key rate limit" --tags api,infra
+```
+
+Or add it as a project dev-dependency (pins the version for your team):
+
+```bash
+npm i -D @ksoftm/create-arc       # then: npx arc <command>
+```
+
+**Slash commands for AI agents.** Generate `/arc-*` commands for your coding agent so you can drive ARC from chat:
+
+```bash
+arc agent-init                    # all agents (Claude Code, opencode, Cursor, Codex, Gemini CLI)
+arc agent-init --agents claude,opencode   # or pick specific ones
+```
+
+This writes command files into `.claude/commands/`, `.opencode/command/`, `.cursor/commands/`, `.codex/prompts/`, and `.gemini/commands/`. Then type `/arc-new`, `/arc-build`, `/arc-status`, `/arc-refine`, or `/arc-resume` in your agent — each routes the agent through `ARC.md`.
+
+
 ## ARC (plan-driven development)
 
 This project uses ARC. Before any development work, read ./ARC.md and follow it:
@@ -129,7 +150,9 @@ draft → planned → in-progress → review → done → (archive/)
 | `status [dir] [--json]`              | Table (or JSON) of every arc: ID, status, plan version, task progress, resume hints.                                          |
 | `doctor [dir]`                       | Consistency checks — index ↔ file bijection, ID/`next_id` sanity, valid statuses. Exits non-zero on problems.                 |
 
-Options: `--owner NAME` (defaults to `git config user.name`), `--tags a,b`, `--json`, `--version`, `--help`.
+Options: `--owner NAME` (defaults to `git config user.name`), `--tags a,b`, `--json`, `--agents a,b`, `--force`, `--version`, `--help`.
+
+The package installs two equivalent binaries: **`arc`** (short) and **`create-arc`**. Use `arc <command>` after a global install, or `npx @ksoftm/create-arc <command>` without installing.
 
 The skill ships the same three operations as zero-dependency Python scripts (`scripts/arc_init.py`, `arc_new.py`, `arc_status.py`) so Claude can run them directly in its sandbox.
 
