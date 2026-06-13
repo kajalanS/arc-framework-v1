@@ -4,6 +4,18 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/), and the project adheres to
 [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Changed
+- **Releases are now fully automated with semantic-release.** Versioning is
+  derived from Conventional Commit messages; on every push to `master` the
+  release workflow determines the next version, updates this changelog,
+  publishes `@ksoftm/create-arc` to npm with provenance, and creates a GitHub
+  Release with the `.skill` asset — all in a single job. This replaces the
+  previous auto-tag approach (a tag pushed by `GITHUB_TOKEN` cannot trigger the
+  tag-based release workflow, so the release never ran). Future version and
+  changelog entries below this point are generated automatically.
+
 ## [1.0.3] - 2026-06-13
 
 ### Fixed

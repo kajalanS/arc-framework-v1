@@ -179,16 +179,8 @@ npm run sync:check    # verify everything is in sync (what CI runs)
 - **validate** — template drift check, `SKILL.md` validation (mirrors the Skills API rules), and a Python smoke test exercising the three skill scripts end-to-end.
 - **test-cli** — the `create-arc` test suite across **Node 18 / 20 / 22** on **Linux, Windows, and macOS**.
 - **package** — builds `dist/arc.skill` and uploads it as a workflow artifact.
-- **auto-tag** — on `master`, if the package version changed since the previous commit, pushes a `vX.Y.Z` tag (which triggers the release workflow). Ordinary pushes with no version change do nothing.
 
-[`.github/workflows/release.yml`](.github/workflows/release.yml) — on a `v*.*.*` tag:
-
-- Re-runs the full validation suite.
-- **Verifies the tag matches the package version** (a mismatched tag fails before anything publishes).
-- **Publishes [`@ksoftm/create-arc`](https://www.npmjs.com/package/@ksoftm/create-arc) to npm with provenance** (OIDC-signed).
-- Creates a **GitHub Release** with the `.skill` attached and auto-generated notes.
-
----
+[`.github/workflows/release.yml`](.github/workflows/release.yml) — on every push to `master`, runs the full gate then **`semantic-release`** in one job: it determines the next version from Conventional Commits, updates the changelog, publishes to npm with provenance, creates a GitHub Release with the `.skill` asset, and commits the bumped versions + changelog back. No manual tagging; no tag-triggered second workflow.
 
 ## Production deployment
 
@@ -198,24 +190,43 @@ npm run sync:check    # verify everything is in sync (what CI runs)
 2. Add a repository secret **`NPM_TOKEN`** — an npm **Automation** access token (npm → *Access Tokens* → *Generate New Token* → *Automation*). Required for publishing.
 3. Confirm the npm org/scope `@ksoftm` exists and your token can publish to it.
 
-**How releases trigger (automatic)**
+**How releases work (fully automated via semantic-release)**
 
-Releases are driven by the version in `package.json`. The `auto-tag` job in [`ci.yml`](.github/workflows/ci.yml) runs after tests pass on `master`: if the `packages/create-arc` version changed since the previous commit, it creates and pushes the matching `vX.Y.Z` tag — and that tag triggers [`release.yml`](.github/workflows/release.yml) (npm publish with provenance + GitHub Release with the `.skill` asset).
+You never bump a version or push a tag by hand. Releases are driven by your **commit messages** (Conventional Commits). On every push to `master`, [`release.yml`](.github/workflows/release.yml) runs the full test gate and then `semantic-release` in a single job, which:
 
-So a normal release is just a version bump:
+1. analyzes the commits since the last release and decides the next version (SemVer),
+2. updates `CHANGELOG.md` from the commit history,
+3. publishes [`@ksoftm/create-arc`](https://www.npmjs.com/package/@ksoftm/create-arc) to npm with provenance,
+4. builds `dist/arc.skill` and attaches it to a **GitHub Release**, and
+5. commits the bumped `package.json` files + changelog back to `master` (with `[skip ci]`).
+
+Because everything happens in one job, there's no second workflow waiting on a tag — which sidesteps GitHub's rule that a tag pushed by `GITHUB_TOKEN` can't trigger another workflow.
+
+**Commit messages decide the version**
+
+| Commit type | Example | Release |
+|---|---|---|
+| `fix:` | `fix(cli): handle CRLF templates on Windows` | patch (1.0.x) |
+| `feat:` | `feat(cli): add doctor --fix` | minor (1.x.0) |
+| `feat!:` / `BREAKING CHANGE:` in body | `feat(cli)!: rename doctor to verify` | major (x.0.0) |
+| `chore:`, `docs:`, `test:`, `refactor:`, `ci:` | `docs: clarify install steps` | no release |
+
+So a normal release is just: commit with the right prefix, push to `master`, done.
 
 ```bash
-cd packages/create-arc && npm version patch --no-git-tag-version && cd ../..  # 1.0.2 -> 1.0.3
-npm version 1.0.3 --no-git-tag-version                                        # keep root in lockstep
-git add -A && git commit -m "[ARC-0000] release v1.0.3"
-git push                                                                       # CI -> auto-tag -> release
+git commit -m "fix(cli): correct index parsing on empty arc"
+git push                          # CI gate -> semantic-release -> npm + GitHub Release
 ```
 
-No manual `git tag` needed. The job skips tagging if the version is unchanged or the tag already exists, so ordinary pushes never publish.
+Preview what would be released without publishing:
 
-> **First release on an existing repo:** if the current commit already carries the version you want to ship (e.g. you're already at `1.0.2`), there's nothing for `auto-tag` to diff against, so tag that one once by hand — `git tag v1.0.2 && git push origin v1.0.2` — then let `auto-tag` handle every bump afterward.
+```bash
+npm run release:dry               # prints the next version + notes, changes nothing
+```
 
-> **Keep versions in lockstep:** the root `package.json` and `packages/create-arc/package.json` must match. The `auto-tag` job fails loudly if they diverge, and `release.yml` re-checks the tag against the package version before publishing.
+> **First run on an existing repo:** semantic-release continues from your latest `vX.Y.Z` git tag. If no release tags exist yet, it starts at `1.0.0`. Your current tags (e.g. `v1.0.3`) are respected automatically.
+
+> **Don't hand-edit versions.** `semantic-release` owns the version in both `package.json` files (the root is synced by `tools/set-version.mjs` during release) and `CHANGELOG.md`. Manual edits will be overwritten.
 
 ## Local development
 

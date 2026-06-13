@@ -14,7 +14,9 @@
     "smoke": "node tools/smoke.mjs",
     "package": "node tools/package-skill.mjs --out dist",
     "test": "npm test --workspace @ksoftm/create-arc",
-    "check": "npm run sync:check && npm run validate && npm run smoke && npm test"
+    "check": "npm run sync:check && npm run validate && npm run smoke && npm test",
+    "release": "semantic-release",
+    "release:dry": "semantic-release --dry-run --no-ci"
   },
   "license": "MIT",
   "author": "Ksoftm (Kajalan)",
@@ -28,5 +30,16 @@
   },
   "engines": {
     "node": ">=18"
+  },
+  "devDependencies": {
+    "@semantic-release/changelog": "^6.0.3",
+    "@semantic-release/commit-analyzer": "^13.0.1",
+    "@semantic-release/exec": "^7.1.0",
+    "@semantic-release/git": "^10.0.1",
+    "@semantic-release/github": "^12.0.8",
+    "@semantic-release/npm": "^13.1.5",
+    "@semantic-release/release-notes-generator": "^14.1.1",
+    "conventional-changelog-conventionalcommits": "^9.3.1",
+    "semantic-release": "^25.0.5"
   }
 }

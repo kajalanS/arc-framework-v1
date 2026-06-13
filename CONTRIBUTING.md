@@ -36,6 +36,38 @@ All four must pass. CI additionally runs the CLI tests across Node 18/20/22 on L
 - Keep tooling dependency-free (Node built-ins and standard-library Python only).
 - Keep `SKILL.md` focused; long material belongs in `references/`.
 
+## Commit messages (Conventional Commits)
+
+This project releases automatically from commit messages, so format matters.
+
+```
+<type>(<optional scope>): <description>
+```
+
+Common types: `feat` (new feature → minor), `fix` (bug fix → patch), `docs`,
+`test`, `refactor`, `chore`, `ci`, `build`, `perf`. A breaking change — either
+`type!:` or a `BREAKING CHANGE:` line in the body — triggers a major release.
+
+Examples:
+
+```
+feat(cli): add `doctor --fix` to repair the index
+fix(skill): tolerate CRLF line endings in templates
+docs: clarify first-release steps
+feat(cli)!: rename `doctor` to `verify`
+```
+
+`feat`/`fix`/breaking changes cut a release; `docs`/`chore`/`test`/`refactor`/`ci`
+do not. Reference an arc where it helps (`fix(cli): ... [ARC-0007]`).
+
 ## Releasing (maintainers)
 
-Bump the version in **both** `package.json` and `packages/create-arc/package.json` (keep them identical), commit, and push to `master`. CI's `auto-tag` job detects the version change and pushes the matching `vX.Y.Z` tag, which triggers the release workflow (npm publish with provenance + GitHub Release with the `.skill` asset). No manual tagging needed for routine releases. See the README's *Production deployment* section for details and the one-time first-release note.
+Releases are fully automated by `semantic-release` — **do not bump versions or
+push tags by hand.** Merge Conventional Commits into `master` and the release
+workflow determines the version, updates `CHANGELOG.md`, publishes
+`@ksoftm/create-arc` to npm with provenance, and creates a GitHub Release with
+the `.skill` asset. Preview a release locally with `npm run release:dry` (it
+changes nothing). The root and package `package.json` versions and the changelog
+are owned by the tool; manual edits get overwritten. See the README's
+*Production deployment* section for full details and the one-time `NPM_TOKEN`
+setup.
