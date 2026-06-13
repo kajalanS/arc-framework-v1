@@ -4,16 +4,11 @@ on:
   push:
     branches: [master]
 
-# semantic-release runs as a single job: it analyzes commits, bumps the version,
-# updates the changelog, publishes to npm, creates the GitHub Release with the
-# .skill asset, and commits the version/changelog back — all in one run. There is
-# no tag-triggered second workflow, so the GITHUB_TOKEN "won't re-trigger" limit
-# does not apply here.
 permissions:
-  contents: write       # push the release commit + tag, create the GitHub Release
-  issues: write         # comment on released issues
-  pull-requests: write  # comment on released PRs
-  id-token: write       # OIDC for npm provenance
+  contents: write
+  issues: write
+  pull-requests: write
+  id-token: write
 
 concurrency:
   group: release
@@ -23,23 +18,25 @@ jobs:
   release:
     name: Release (semantic-release)
     runs-on: ubuntu-latest
-    # Don't run on the release commit semantic-release itself pushes.
+
     if: ${{ !contains(github.event.head_commit.message, '[skip ci]') }}
+
     steps:
       - uses: actions/checkout@v4
         with:
-          fetch-depth: 0          # semantic-release needs full history + tags
+          fetch-depth: 0
           persist-credentials: false
 
       - uses: actions/setup-node@v4
         with:
-          node-version: 22         # trusted publishing / provenance wants Node >= 22
+          node-version: 22
           registry-url: "https://registry.npmjs.org"
 
-      # --- quality gate: never release something that doesn't pass ---
+      # Install dependencies
       - name: Install workspace
         run: npm ci || npm install
 
+      # Quality checks
       - name: Check template drift
         run: node tools/sync-templates.mjs --check
 
@@ -57,9 +54,28 @@ jobs:
         working-directory: packages/create-arc
         run: npm test
 
-      # --- release ---
+      # Debug NPM authentication
+      - name: Verify NPM token exists
+        env:
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: |
+          if [ -z "$NPM_TOKEN" ]; then
+            echo "❌ NPM_TOKEN is missing"
+            exit 1
+          fi
+          echo "✅ NPM_TOKEN found"
+          echo "Token length: ${#NPM_TOKEN}"
+
+      - name: Verify NPM authentication
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: |
+          npm whoami
+
+      # Release
       - name: semantic-release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
           NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: npx semantic-release

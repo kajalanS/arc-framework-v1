@@ -1,7 +1,7 @@
 {
   "name": "arc-framework",
   "version": "1.0.3",
-  "private": true,
+  "private": false,
   "type": "module",
   "description": "ARC — plan-driven development for AI agents (Align → Refine → Construct), shipped as a Claude skill and an npm scaffolder.",
   "workspaces": [
