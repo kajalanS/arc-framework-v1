@@ -95,6 +95,27 @@ test("doctor fails when an index row is missing", () => {
   } finally { rmSync(dir, { recursive: true, force: true }); }
 });
 
+test("handles CRLF line endings in templates (Windows checkout)", () => {
+  const dir = fresh();
+  try {
+    run(dir, ["init", "--owner", "tester"]);
+    // Simulate a Windows/git-autocrlf checkout: rewrite the arc files with CRLF.
+    for (const f of [".arc/_TEMPLATE.md", ".arc/INDEX.md", ".arc/ARC-0000-maintenance.md"]) {
+      const p = join(dir, f);
+      writeFileSync(p, readFileSync(p, "utf8").replace(/\n/g, "\r\n"));
+    }
+    // `new` parses _TEMPLATE.md frontmatter — this is exactly what broke on Windows.
+    run(dir, ["new", "CRLF safe", "--tags", "win"]);
+    const arc = readFileSync(join(dir, ".arc/ARC-0001-crlf-safe.md"), "utf8");
+    assert.match(arc, /^id: ARC-0001$/m, "frontmatter parsed despite CRLF templates");
+    assert.match(readFileSync(join(dir, ".arc/INDEX.md"), "utf8"), /next_id: ARC-0002/);
+    // status + doctor must also tolerate CRLF in the arc/index files.
+    const arcs = JSON.parse(run(dir, ["status", "--json"]));
+    assert.ok(arcs.some((a) => a.id === "ARC-0001"));
+    assert.match(run(dir, ["doctor"]), /doctor: healthy/);
+  } finally { rmSync(dir, { recursive: true, force: true }); }
+});
+
 test("version prints the package version", () => {
   const out = run(process.cwd(), ["--version"]).trim();
   assert.match(out, /^\d+\.\d+\.\d+$/);

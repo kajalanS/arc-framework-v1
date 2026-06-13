@@ -73,7 +73,7 @@ def main() -> int:
             print(f"  skip  {rel_dest} (exists)")
             skipped += 1
             continue
-        text = src.read_text(encoding="utf-8")
+        text = src.read_text(encoding="utf-8").replace("\r\n", "\n").replace("\r", "\n")
         text = text.replace("{{DATE}}", today).replace("{{OWNER}}", owner)
         dest.parent.mkdir(parents=True, exist_ok=True)
         dest.write_text(text, encoding="utf-8")

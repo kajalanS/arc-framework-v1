@@ -51,7 +51,7 @@ if (allSkillMd.length > 1) {
 }
 
 // --- parse frontmatter ----------------------------------------------------
-const content = readFileSync(skillMd, "utf8");
+const content = readFileSync(skillMd, "utf8").replace(/\r\n/g, "\n").replace(/\r/g, "\n");
 const fm = content.match(/^---\n([\s\S]*?)\n---/);
 if (!fm) {
   console.error("✗ no YAML frontmatter found in SKILL.md");

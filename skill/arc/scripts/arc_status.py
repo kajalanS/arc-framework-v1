@@ -24,8 +24,13 @@ def field(front: str, key: str, default: str = "?") -> str:
     return m.group(1).strip() if m and m.group(1).strip() else default
 
 
+def _read_lf(path: Path) -> str:
+    """Read UTF-8 and normalize CRLF/CR to LF so ^...$ regexes are reliable on Windows."""
+    return path.read_text(encoding="utf-8").replace("\r\n", "\n").replace("\r", "\n")
+
+
 def parse_arc(path: Path, archived: bool) -> dict:
-    text = path.read_text(encoding="utf-8")
+    text = _read_lf(path)
     fm = FM_RE.match(text)
     front = fm.group(1) if fm else ""
     # count tasks only within section 4, falling back to the whole file
@@ -65,7 +70,7 @@ def main() -> int:
         print(json.dumps(arcs, indent=2))
         return 0
 
-    index_text = (arc_dir / "INDEX.md").read_text(encoding="utf-8") if (arc_dir / "INDEX.md").exists() else ""
+    index_text = _read_lf(arc_dir / "INDEX.md") if (arc_dir / "INDEX.md").exists() else ""
     focus = re.search(r"^active_focus:\s*(.+)$", index_text, re.MULTILINE)
     next_id = re.search(r"^next_id:\s*(.+)$", index_text, re.MULTILINE)
 

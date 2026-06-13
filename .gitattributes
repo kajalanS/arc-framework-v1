@@ -1,0 +1,22 @@
+# Normalize line endings across platforms.
+# Keep these files LF on checkout so the framework's parsers and the
+# byte-for-byte template drift check (tools/sync-templates.mjs --check)
+# behave identically on Windows, macOS, and Linux regardless of git autocrlf.
+
+* text=auto eol=lf
+
+# Explicit: all framework source stays LF.
+*.md      text eol=lf
+*.mjs     text eol=lf
+*.js      text eol=lf
+*.py      text eol=lf
+*.json    text eol=lf
+*.yml     text eol=lf
+*.yaml    text eol=lf
+LICENSE   text eol=lf
+
+# Binary / generated artifacts — never normalize.
+*.skill   binary
+*.png     binary
+*.jpg     binary
+*.zip     binary

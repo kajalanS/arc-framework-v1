@@ -17,6 +17,11 @@ from datetime import date
 from pathlib import Path
 
 
+def _read_lf(path: Path) -> str:
+    """Read UTF-8 and normalize CRLF/CR to LF so ^...$ regexes are reliable on Windows."""
+    return path.read_text(encoding="utf-8").replace("\r\n", "\n").replace("\r", "\n")
+
+
 def slugify(title: str, max_len: int = 40) -> str:
     slug = re.sub(r"[^a-z0-9]+", "-", title.lower()).strip("-")
     slug = re.sub(r"-{2,}", "-", slug)
@@ -41,7 +46,7 @@ def main() -> int:
             print(f"error: {p} not found — {hint}", file=sys.stderr)
             return 1
 
-    index = index_path.read_text(encoding="utf-8")
+    index = _read_lf(index_path)
     m = re.search(r"^next_id:\s*ARC-(\d+)\s*$", index, re.MULTILINE)
     if not m:
         print("error: could not find 'next_id: ARC-NNNN' in INDEX.md", file=sys.stderr)
@@ -57,7 +62,7 @@ def main() -> int:
         return 1
 
     # --- build the arc file from the template -------------------------------
-    text = template_path.read_text(encoding="utf-8")
+    text = _read_lf(template_path)
     fm = re.match(r"^---\n(.*?)\n---\n", text, re.DOTALL)
     if not fm:
         print("error: _TEMPLATE.md has no YAML frontmatter", file=sys.stderr)

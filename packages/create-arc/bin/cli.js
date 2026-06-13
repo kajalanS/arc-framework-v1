@@ -18,7 +18,13 @@ import { basename, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const TEMPLATES = fileURLToPath(new URL("../templates/", import.meta.url));
-const PKG = JSON.parse(readFileSync(new URL("../package.json", import.meta.url), "utf8"));
+
+// Read a UTF-8 file and normalize line endings to LF, so every downstream
+// regex (frontmatter, fields, task markers) behaves identically regardless of
+// whether the file was checked out with CRLF (Windows/Git autocrlf) or LF.
+const readText = (p) => readFileSync(p, "utf8").replace(/\r\n/g, "\n").replace(/\r/g, "\n");
+
+const PKG = JSON.parse(readText(new URL("../package.json", import.meta.url)));
 
 const PLACEMENT = {
   "ARC.md": "ARC.md",
@@ -104,7 +110,7 @@ function cmdInit(target, flags) {
     const dest = join(dir, rel);
     if (existsSync(dest)) { console.log(`  skip  ${rel} (exists)`); skipped++; continue; }
     mkdirSync(join(dest, ".."), { recursive: true });
-    const text = readFileSync(join(TEMPLATES, src), "utf8")
+    const text = readText(join(TEMPLATES, src))
       .replaceAll("{{DATE}}", date).replaceAll("{{OWNER}}", owner);
     writeFileSync(dest, text);
     console.log(`  ok    ${rel}`);
@@ -125,7 +131,7 @@ function cmdNew(title, flags) {
     return fail(`.arc/INDEX.md or _TEMPLATE.md missing in ${dir} — run \`create-arc init\` first`);
   }
 
-  let index = readFileSync(indexPath, "utf8");
+  let index = readText(indexPath);
   const m = index.match(/^next_id:\s*ARC-(\d+)\s*$/m);
   if (!m) return fail("could not find 'next_id: ARC-NNNN' in INDEX.md");
   const num = parseInt(m[1], 10);
@@ -136,7 +142,7 @@ function cmdNew(title, flags) {
   if (existsSync(dest)) return fail(`${dest} already exists`);
 
   // build the arc file from the template
-  const tpl = readFileSync(templatePath, "utf8");
+  const tpl = readText(templatePath);
   const fmMatch = tpl.match(/^---\n([\s\S]*?)\n---\n/);
   if (!fmMatch) return fail("_TEMPLATE.md has no YAML frontmatter");
   let front = fmMatch[1];
@@ -176,7 +182,7 @@ function cmdNew(title, flags) {
 }
 
 function parseArc(path, archived) {
-  const text = readFileSync(path, "utf8");
+  const text = readText(path);
   const front = frontmatter(text);
   const section = text.match(/^## 4 · Tasks\n([\s\S]*?)(?=^## |(?![\s\S]))/m)?.[1] ?? text;
   const markers = [...section.matchAll(/^- \[([ >x!-])\]/gm)].map((x) => x[1]);
@@ -207,7 +213,7 @@ function cmdStatus(target, flags) {
   if (flags.json) { console.log(JSON.stringify(arcs, null, 2)); return 0; }
   if (!arcs.length) { console.log("no arcs found"); return 0; }
 
-  const indexText = existsSync(join(arcDir, "INDEX.md")) ? readFileSync(join(arcDir, "INDEX.md"), "utf8") : "";
+  const indexText = existsSync(join(arcDir, "INDEX.md")) ? readText(join(arcDir, "INDEX.md")) : "";
   const focus = indexText.match(/^active_focus:\s*(.+)$/m)?.[1]?.trim();
   const nextId = indexText.match(/^next_id:\s*(.+)$/m)?.[1]?.trim();
 
@@ -249,7 +255,7 @@ function cmdDoctor(target) {
   if (!existsSync(arcDir)) return fail(`${arcDir} not found — run \`create-arc init\` first`);
   if (!existsSync(indexPath)) { bad(".arc/INDEX.md missing"); return finish(); }
 
-  const index = readFileSync(indexPath, "utf8");
+  const index = readText(indexPath);
   const { active, archived } = listArcFiles(arcDir);
   const all = [...active.map((p) => ({ p, archived: false })), ...archived.map((p) => ({ p, archived: true }))];
 
@@ -264,13 +270,13 @@ function cmdDoctor(target) {
   const indexIds = new Set([...index.matchAll(/^\|\s*(ARC-\d{4})\s*\|/gm)].map((x) => x[1]));
   for (const { p } of all) {
     const fileId = basename(p).match(/^(ARC-\d{4})/)?.[1];
-    const front = frontmatter(readFileSync(p, "utf8"));
+    const front = frontmatter(readText(p));
     const fmId = field(front, "id");
     const status = field(front, "status");
     if (fmId !== fileId) bad(`${basename(p)}: frontmatter id '${fmId}' != filename id '${fileId}'`);
     if (!VALID_STATUSES.has(status)) bad(`${basename(p)}: invalid status '${status}'`);
     if (!indexIds.has(fileId)) bad(`${basename(p)}: no row in INDEX.md`);
-    const inProg = [...readFileSync(p, "utf8").matchAll(/^- \[>\]/gm)].length;
+    const inProg = [...readText(p).matchAll(/^- \[>\]/gm)].length;
     if (inProg > 2) warn(`${basename(p)}: ${inProg} tasks marked [>] — keep at most 1–2 in progress`);
   }
   const fileIds = new Set(all.map(({ p }) => basename(p).match(/^(ARC-\d{4})/)?.[1]));

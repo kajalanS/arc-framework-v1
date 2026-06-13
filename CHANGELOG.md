@@ -4,6 +4,19 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/), and the project adheres to
 [Semantic Versioning](https://semver.org/).
 
+## [1.0.2] - 2026-06-13
+
+### Fixed
+- **Windows CI failures: CRLF line endings broke frontmatter parsing.** On a
+  Windows checkout, git's `autocrlf` rewrote template files with CRLF, so the
+  `^---\n` frontmatter regex in `create-arc` no longer matched and `new` failed
+  with "`_TEMPLATE.md has no YAML frontmatter`" (4 of 7 CLI tests). All file
+  reads in the CLI, the skill's Python scripts, and `validate-skill.mjs` now
+  normalize CRLF/CR to LF before parsing, so they work regardless of how files
+  were checked out. Added a `.gitattributes` forcing the framework's source
+  files to LF (also keeps the byte-for-byte template drift check stable on
+  Windows), and a CRLF regression test to the CLI suite.
+
 ## [1.0.1] - 2026-06-13
 
 ### Fixed
