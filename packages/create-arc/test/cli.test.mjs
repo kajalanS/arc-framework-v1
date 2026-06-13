@@ -1,5 +1,5 @@
 import { execFileSync } from "node:child_process";
-import { mkdtempSync, readFileSync, writeFileSync, existsSync, rmSync } from "node:fs";
+import { mkdtempSync, readFileSync, readdirSync, writeFileSync, existsSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -152,11 +152,18 @@ test("agent-init writes slash commands for all agents", () => {
     run(dir, ["agent-init"]);
     for (const f of [".claude/commands/arc-new.md", ".opencode/command/arc-build.md",
                      ".cursor/commands/arc-status.md", ".codex/prompts/arc-resume.md",
-                     ".gemini/commands/arc-refine.toml"]) {
+                     ".gemini/commands/arc-refine.toml",
+                     ".claude/commands/arc-note.md", ".claude/commands/arc-log.md",
+                     ".gemini/commands/arc-note.toml", ".codex/prompts/arc-log.md"]) {
       assert.ok(existsSync(join(dir, f)), `${f} should exist`);
     }
+    // each agent should get all 7 commands
+    assert.equal(readdirSync(join(dir, ".claude/commands")).filter((f) => f.endsWith(".md")).length, 7);
     assert.match(readFileSync(join(dir, ".claude/commands/arc-new.md"), "utf8"), /description:/);
     assert.match(readFileSync(join(dir, ".gemini/commands/arc-new.toml"), "utf8"), /^description = /m);
+    // new commands route through the right CLI subcommands
+    assert.match(readFileSync(join(dir, ".claude/commands/arc-note.md"), "utf8"), /arc note <arc>/);
+    assert.match(readFileSync(join(dir, ".claude/commands/arc-log.md"), "utf8"), /arc log <arc>/);
   } finally { rmSync(dir, { recursive: true, force: true }); }
 });
 

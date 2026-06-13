@@ -302,10 +302,12 @@ After `arc agent-init`, these are available in your agent (type `/` then the nam
 | `/arc-new <instruction>` | Align | Capture the instruction as a new arc (or fold into a covering one), draft the plan and tasks. |
 | `/arc-build [focus]` | Construct | Read the arc + source first, do the work, then log the worklog entry and update the index. |
 | `/arc-refine <instruction>` | Refine | Append the new instruction verbatim, bump the plan version, adjust tasks. |
+| `/arc-note <text>` | — | Quick-capture an instruction (§1) or worklog note (`--worklog`) without changing the plan. |
+| `/arc-log <arc>` | — | Summarize an arc's worklog history and say where it stands. |
 | `/arc-status` | — | Summarize every arc and say what to resume. |
 | `/arc-resume` | — | Open the in-progress arc, read its last worklog entry, and continue. |
 
-All five route the agent through `ARC.md`, so behavior is consistent across Claude Code, opencode, Codex, Cursor, and Gemini CLI.
+All seven route the agent through `ARC.md`, so behavior is consistent across Claude Code, opencode, Codex, Cursor, and Gemini CLI.
 
 ---
 
