@@ -4,9 +4,6 @@ on:
   push:
     branches: [master]
 
-# Token-only publishing (NPM_TOKEN), matching the project's other working repos.
-# No id-token/OIDC, no registry-url — those forced OIDC trusted-publishing, which
-# fails for a not-yet-published package and produced the npm 404.
 permissions:
   contents: write # push release commit + tag, create the GitHub Release
   issues: write # comment on released issues

@@ -24,7 +24,8 @@
     [
       "@semantic-release/npm",
       {
-        "pkgRoot": "packages/create-arc"
+        "pkgRoot": "packages/create-arc",
+        "access": "public"
       }
     ],
     [
