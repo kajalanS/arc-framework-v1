@@ -2,9 +2,9 @@
 
 **Plan-driven development for AI agents, in pure Markdown.** Shipped as a **Claude skill** and an **npm scaffolder**, with a production CI/CD pipeline.
 
-ARC makes any AI coding agent **plan before it builds, keep the plan honest while it builds, and leave an audit trail after it builds**. Every unit of work is an *arc*: one Markdown file in `.arc/` holding the user's raw instructions (verbatim, append-only), the current plan, a refinement log, a task list, a worklog, and a status. The two sanctioned flows are **plan → develop** and **plan → refine/update → develop**.
+ARC makes any AI coding agent **plan before it builds, keep the plan honest while it builds, and leave an audit trail after it builds**. Every unit of work is an _arc_: one Markdown file in `.arc/` holding the user's raw instructions (verbatim, append-only), the current plan, a refinement log, a task list, a worklog, and a status. The two sanctioned flows are **plan → develop** and **plan → refine/update → develop**.
 
-Inspired by [DOX](https://github.com/agent0ai/dox). DOX keeps agents honest about *what the code is*; ARC keeps them honest about *what was asked, what the plan is, and what got done*. They compose — use both.
+Inspired by [DOX](https://github.com/agent0ai/dox). DOX keeps agents honest about _what the code is_; ARC keeps them honest about _what was asked, what the plan is, and what got done_. They compose — use both.
 
 ---
 
@@ -30,7 +30,7 @@ Inspired by [DOX](https://github.com/agent0ai/dox). DOX keeps agents honest abou
 
 ## Why ARC
 
-AI agents lose the plot across sessions. Context windows reset, chat history scrolls away, and the *why* behind a change evaporates — so the next session re-derives intent from the code and often gets it wrong. ARC fixes this by writing the plan down, in the repo, in a structured file the agent must read before editing and update after editing.
+AI agents lose the plot across sessions. Context windows reset, chat history scrolls away, and the _why_ behind a change evaporates — so the next session re-derives intent from the code and often gets it wrong. ARC fixes this by writing the plan down, in the repo, in a structured file the agent must read before editing and update after editing.
 
 The payoff:
 
@@ -44,11 +44,11 @@ The payoff:
 
 ## What this repository ships
 
-| Artifact | Path | What it is |
-|---|---|---|
-| **Skill** | [`skill/arc/`](skill/arc/) | A Claude skill (`SKILL.md` + scripts + protocol reference) so Claude natively runs ARC — detects `.arc/`, files instructions, plans, refines, logs. |
-| **npm package** | [`packages/create-arc/`](packages/create-arc/) | [`@ksoftm/create-arc`](https://www.npmjs.com/package/@ksoftm/create-arc) — scaffold and drive ARC from any terminal, zero deps. |
-| **Templates** | [`templates/`](templates/) | Canonical `ARC.md`, `INDEX.md`, `_TEMPLATE.md`, `ARC-0000` — the single source of truth both artifacts embed. |
+| Artifact        | Path                                           | What it is                                                                                                                                          |
+| --------------- | ---------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Skill**       | [`skill/arc/`](skill/arc/)                     | A Claude skill (`SKILL.md` + scripts + protocol reference) so Claude natively runs ARC — detects `.arc/`, files instructions, plans, refines, logs. |
+| **npm package** | [`packages/create-arc/`](packages/create-arc/) | [`@ksoftm/create-arc`](https://www.npmjs.com/package/@ksoftm/create-arc) — scaffold and drive ARC from any terminal, zero deps.                     |
+| **Templates**   | [`templates/`](templates/)                     | Canonical `ARC.md`, `INDEX.md`, `_TEMPLATE.md`, `ARC-0000` — the single source of truth both artifacts embed.                                       |
 
 ---
 
@@ -58,7 +58,7 @@ The payoff:
 
 Install the bundled skill so Claude becomes a native ARC agent.
 
-1. Get `dist/arc.skill` — download it from the latest [GitHub Release](https://github.com/KsoftM/arc/releases), or build it locally with `npm run package`.
+1. Get `dist/arc.skill` — download it from the latest [GitHub Release](https://github.com/KsoftmHub/arc-framework-v1/releases), or build it locally with `npm run package`.
 2. In Claude, go to **Settings → Capabilities → Skills** and upload `arc.skill`.
 
 From then on, just give development instructions. Claude detects any repo containing `.arc/` or `ARC.md`, files each instruction into an arc verbatim, plans it, refines when you change your mind, builds, and logs progress.
@@ -78,6 +78,7 @@ Then point your agent at `ARC.md` (or add the pointer below to your `AGENTS.md` 
 
 ```markdown
 ## ARC (plan-driven development)
+
 This project uses ARC. Before any development work, read ./ARC.md and follow it:
 no code changes without an arc in .arc/ — Read Before Editing, Update After Editing.
 ```
@@ -89,7 +90,7 @@ no code changes without an arc in .arc/ — Read Before Editing, Update After Ed
 Each arc file is one unit of development, in a fixed section order:
 
 1. **Raw Instructions** — the user's words, verbatim and append-only. Voice-transcription noise is preserved; an `interpreted:` line records the agent's reading of anything ambiguous (and scope-changing interpretations get confirmed before construction).
-2. **Plan** — the *current* plan only, with objectively checkable acceptance criteria. History never lives here.
+2. **Plan** — the _current_ plan only, with objectively checkable acceptance criteria. History never lives here.
 3. **Refinement Log** — one append-only entry per plan-version bump: what changed, why, and the task impact.
 4. **Tasks** — numbered `T1, T2, …` (never renumbered), each with a live marker: `[ ]` pending · `[>]` in progress · `[x]` done · `[!]` blocked · `[-]` cancelled.
 5. **Worklog** — one append-only entry per edit session: tasks advanced, files read, files changed, summary, decisions, follow-ups.
@@ -121,12 +122,12 @@ draft → planned → in-progress → review → done → (archive/)
 
 ## CLI reference
 
-| Command | What it does |
-|---|---|
-| `init [dir]` | Scaffold `ARC.md` + `.arc/` (index, template, standing maintenance arc, `notes/`, `archive/`). Idempotent — never overwrites. |
-| `new "Title" [--dir=.] [--tags=a,b]` | Take the next sequential ID, create the arc from the template, register its index row, bump `next_id`. |
-| `status [dir] [--json]` | Table (or JSON) of every arc: ID, status, plan version, task progress, resume hints. |
-| `doctor [dir]` | Consistency checks — index ↔ file bijection, ID/`next_id` sanity, valid statuses. Exits non-zero on problems. |
+| Command                              | What it does                                                                                                                  |
+| ------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------- |
+| `init [dir]`                         | Scaffold `ARC.md` + `.arc/` (index, template, standing maintenance arc, `notes/`, `archive/`). Idempotent — never overwrites. |
+| `new "Title" [--dir=.] [--tags=a,b]` | Take the next sequential ID, create the arc from the template, register its index row, bump `next_id`.                        |
+| `status [dir] [--json]`              | Table (or JSON) of every arc: ID, status, plan version, task progress, resume hints.                                          |
+| `doctor [dir]`                       | Consistency checks — index ↔ file bijection, ID/`next_id` sanity, valid statuses. Exits non-zero on problems.                 |
 
 Options: `--owner NAME` (defaults to `git config user.name`), `--tags a,b`, `--json`, `--version`, `--help`.
 
@@ -187,7 +188,7 @@ npm run sync:check    # verify everything is in sync (what CI runs)
 **One-time setup**
 
 1. Create the GitHub repo and push this tree to `master`. CI runs immediately.
-2. Add a repository secret **`NPM_TOKEN`** — an npm **Automation** access token (npm → *Access Tokens* → *Generate New Token* → *Automation*). Required for publishing.
+2. Add a repository secret **`NPM_TOKEN`** — an npm **Automation** access token (npm → _Access Tokens_ → _Generate New Token_ → _Automation_). Required for publishing.
 3. Confirm the npm org/scope `@ksoftm` exists and your token can publish to it.
 
 **How releases work (fully automated via semantic-release)**
@@ -204,12 +205,12 @@ Because everything happens in one job, there's no second workflow waiting on a t
 
 **Commit messages decide the version**
 
-| Commit type | Example | Release |
-|---|---|---|
-| `fix:` | `fix(cli): handle CRLF templates on Windows` | patch (1.0.x) |
-| `feat:` | `feat(cli): add doctor --fix` | minor (1.x.0) |
-| `feat!:` / `BREAKING CHANGE:` in body | `feat(cli)!: rename doctor to verify` | major (x.0.0) |
-| `chore:`, `docs:`, `test:`, `refactor:`, `ci:` | `docs: clarify install steps` | no release |
+| Commit type                                    | Example                                      | Release       |
+| ---------------------------------------------- | -------------------------------------------- | ------------- |
+| `fix:`                                         | `fix(cli): handle CRLF templates on Windows` | patch (1.0.x) |
+| `feat:`                                        | `feat(cli): add doctor --fix`                | minor (1.x.0) |
+| `feat!:` / `BREAKING CHANGE:` in body          | `feat(cli)!: rename doctor to verify`        | major (x.0.0) |
+| `chore:`, `docs:`, `test:`, `refactor:`, `ci:` | `docs: clarify install steps`                | no release    |
 
 So a normal release is just: commit with the right prefix, push to `master`, done.
 
@@ -248,7 +249,7 @@ Requirements: Node ≥ 18 and Python ≥ 3.8 (smoke test only; the shipped tooli
 
 ## FAQ
 
-**Does ARC replace AGENTS.md / DOX / CLAUDE.md?** No — it complements them. Those describe the codebase and working conventions (*how to work here*); ARC tracks intent, plans, and progress (*what to build and why*). If referenced from an `AGENTS.md`, ARC is binding for development work.
+**Does ARC replace AGENTS.md / DOX / CLAUDE.md?** No — it complements them. Those describe the codebase and working conventions (_how to work here_); ARC tracks intent, plans, and progress (_what to build and why_). If referenced from an `AGENTS.md`, ARC is binding for development work.
 
 **Do I need the skill and the CLI?** No. The CLI scaffolds and inspects ARC from any terminal and works with any agent. The skill additionally teaches Claude the full protocol so it runs ARC autonomously. Use either or both.
 

@@ -34,12 +34,12 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/KsoftM/arc.git",
+    "url": "git+https://github.com/KsoftmHub/arc-framework-v1.git",
     "directory": "packages/create-arc"
   },
-  "homepage": "https://github.com/KsoftM/arc#readme",
+  "homepage": "https://github.com/KsoftmHub/arc-framework-v1#readme",
   "bugs": {
-    "url": "https://github.com/KsoftM/arc/issues"
+    "url": "https://github.com/KsoftmHub/arc-framework-v1/issues"
   },
   "publishConfig": {
     "access": "public",

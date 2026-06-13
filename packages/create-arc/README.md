@@ -11,7 +11,7 @@ npx @ksoftm/create-arc doctor                         # verify the registry is c
 
 ## What ARC is
 
-Every unit of development is an **arc**: one Markdown file under `.arc/` that holds its whole story — the user's raw instructions (verbatim, append-only), the current plan, a refinement log, a task list, a worklog, and a status. The agent plans before it builds, refines the plan when the ask changes, and logs every edit — so any later session resumes from the arc, not the chat history. Full concept and protocol: **https://github.com/KsoftM/arc**.
+Every unit of development is an **arc**: one Markdown file under `.arc/` that holds its whole story — the user's raw instructions (verbatim, append-only), the current plan, a refinement log, a task list, a worklog, and a status. The agent plans before it builds, refines the plan when the ask changes, and logs every edit — so any later session resumes from the arc, not the chat history. Full concept and protocol: **https://github.com/KsoftmHub/arc-framework-v1**.
 
 ## Install
 
@@ -49,7 +49,7 @@ your-project/
 
 ## Then what?
 
-Give your AI agent development instructions as usual. With `ARC.md` in the repo — and the companion [ARC skill](https://github.com/KsoftM/arc) if you use Claude — the agent files each instruction into an arc verbatim, plans it, refines when you change your mind, builds, and logs progress.
+Give your AI agent development instructions as usual. With `ARC.md` in the repo — and the companion [ARC skill](https://github.com/KsoftmHub/arc-framework-v1) if you use Claude — the agent files each instruction into an arc verbatim, plans it, refines when you change your mind, builds, and logs progress.
 
 ## License
 
